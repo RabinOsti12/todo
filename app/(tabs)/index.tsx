@@ -1,5 +1,7 @@
 import { ITodo } from "@/constants/types";
-import React, { useState } from "react";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -13,22 +15,48 @@ export default function Index() {
   const [text, setText] = useState("");
   const [todos, setTodos] = useState<[] | ITodo[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [editTodoID, setEditTodoID] = useState("");
   function handleAddTodo() {
     console.log("handle add triggered!");
     if (text.trim().length < 5) {
       setErrorMessage("Todo should be atleast 5 character long.");
       return;
     }
-    setTodos((prev) => [...prev, { id: Date.now().toString(), title: text }]);
+    if (editTodoID) {
+      const updatedTodos = todos.map((todo) => {
+        if (todo.id === editTodoID) {
+          return { ...todo, title: text };
+        }
+        return todo;
+      });
+      setTodos(updatedTodos);
+      setEditTodoID("");
+    } else {
+      setTodos((prev) => [
+        ...prev,
+        { id: Date.now().toString(), title: text, done: false },
+      ]);
+    }
     setErrorMessage("");
     setText("");
-    return;
   }
 
   function handleDelete(id: string) {
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
   }
 
+  function handleEdit(item: ITodo) {
+    setText(item.title);
+    setEditTodoID(item.id);
+  }
+
+  function handleMarkToggle(id: string) {
+    setTodos((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, done: !item.done } : item
+      )
+    );
+  }
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>My Todo List</Text>
@@ -51,7 +79,9 @@ export default function Index() {
           }}
           onPress={handleAddTodo}
         >
-          <Text style={{ color: "#fff", fontSize: 16 }}>Add</Text>
+          <Text style={{ color: "#fff", fontSize: 16 }}>
+            {editTodoID ? "Update" : "Add"}
+          </Text>
         </Pressable>
       </View>
       {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
@@ -63,13 +93,34 @@ export default function Index() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.todoItem}>
-              <Text style={styles.todoText}>{item.title}</Text>
-              <Pressable
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(item.id)}
+              <Text
+                style={[
+                  styles.todoText,
+                  item.done ? styles.markAsDoneText : null,
+                ]}
               >
-                <Text style={styles.deleteText}>✕</Text>
-              </Pressable>
+                {item.title}
+              </Text>
+              <View style={styles.actions}>
+                <MaterialIcons
+                  name="done"
+                  size={24}
+                  color="black"
+                  onPress={() => handleMarkToggle(item.id)}
+                />
+                <Feather
+                  name="edit"
+                  size={24}
+                  color="black"
+                  onPress={() => handleEdit(item)}
+                />
+                <Pressable
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(item.id)}
+                >
+                  <Text style={styles.deleteText}>✕</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         />
@@ -144,9 +195,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 4,
   },
+  markAsDoneText: {
+    textDecorationLine: "line-through",
+  },
   deleteText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
   },
 });
